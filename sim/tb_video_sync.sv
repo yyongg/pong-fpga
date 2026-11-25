@@ -19,6 +19,12 @@ module tb_video_sync;
 
   initial begin
     int de_cnt, hs_cnt, vs_cnt, tick_cnt;
+    int line_fd, frame_fd;               // traces for the timing plot (sim/make_media.py)
+
+    line_fd  = $fopen("video_line.csv", "w");     // every pixel of line 0
+    frame_fd = $fopen("video_frame.csv", "w");    // every line of frame 0, sampled at x = 0
+    $fwrite(line_fd,  "x,de,hsync\n");
+    $fwrite(frame_fd, "y,de,vsync,frame_tick\n");
 
     repeat (3) @(negedge clk);
     rst = 0;                             // x = y = 0 now; counting starts next edge
@@ -36,6 +42,8 @@ module tb_video_sync;
           hs_cnt   += !hsync;
           vs_cnt   += !vsync;
           tick_cnt += frame_tick;
+          if (f == 0 && l == 0) $fwrite(line_fd, "%0d,%0d,%0d\n", x, de, hsync);
+          if (f == 0 && p == 0) $fwrite(frame_fd, "%0d,%0d,%0d,%0d\n", y, de, vsync, frame_tick);
           @(negedge clk);
         end
       end

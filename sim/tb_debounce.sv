@@ -16,6 +16,17 @@ module tb_debounce;
   int errors = 0;
   `define CHECK(cond, msg) if (cond) ; else begin errors++; if (errors <= 20) $error msg; end
 
+  // Trace of button 0 for the waveform plot (sim/make_media.py)
+  int trace_fd, cycle = 0;
+  initial begin
+    trace_fd = $fopen("debounce.csv", "w");
+    $fwrite(trace_fd, "cycle,in,out\n");
+  end
+  always @(negedge clk) begin
+    $fwrite(trace_fd, "%0d,%0d,%0d\n", cycle, in[0], out[0]);
+    cycle++;
+  end
+
   // Clocks until out[ch] follows in[ch] (gives up after `limit`, returns -1)
   task automatic clocks_to_follow(input int ch, input int limit, output int n);
     n = -1;

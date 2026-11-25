@@ -30,11 +30,23 @@ module tb_pong_game;
   int errors = 0;
   `define CHECK(cond, msg) if (cond) ; else begin errors++; if (errors <= 20) $error msg; end
 
+  // Game state after every frame of the tests named by trace_tag goes to
+  // game.csv, for the animation made by sim/make_media.py
+  int    trace_fd;
+  string trace_tag = "";
+  initial begin
+    trace_fd = $fopen("game.csv", "w");
+    $fwrite(trace_fd, "test,ball_x,ball_y,lpad_y,rpad_y,score_l,score_r\n");
+  end
+
   // ---------------- Helpers -------------------------------------------------
   task automatic frame(input int n = 1);
     repeat (n) begin
       @(negedge clk) tick = 1;
       @(negedge clk) tick = 0;
+      if (trace_tag != "")
+        $fwrite(trace_fd, "%s,%0d,%0d,%0d,%0d,%0d,%0d\n", trace_tag,
+                ball_x, ball_y, lpad_y, rpad_y, score_l, score_r);
     end
   endtask
 
@@ -172,6 +184,7 @@ module tb_pong_game;
     frame();
     `CHECK(ball_x == BALL_X0 + 4, ("serve after left's point should go right (ball_x = %0d)", ball_x))
 
+    trace_tag = "rally";
     // 5. Rally between two computer players: nobody should ever miss
     reset();
     bounces_l = 0; bounces_r = 0; wall_hits = 0; vy_seen.delete();
@@ -184,6 +197,7 @@ module tb_pong_game;
     `CHECK(wall_hits >= 1, ("rally: ball never bounced off the top/bottom"))
     `CHECK(vy_seen.num() >= 4, ("rally: paddle angle never changed (%0d vy values)", vy_seen.num()))
 
+    trace_tag = "miss";
     // 6. Left player misses on purpose: right scores, serve goes left
     reset();
     miss_l = 1; aim_r = 0;
@@ -196,6 +210,7 @@ module tb_pong_game;
     `CHECK(ball_x == BALL_X0 - 4, ("serve after right's point should go left (ball_x = %0d)", ball_x))
     miss_l = 0;
 
+    trace_tag = "gameover";
     // 7. Game over: left wins 9:0, the game freezes, a button restarts it
     reset();
     n = 0;
@@ -213,6 +228,8 @@ module tb_pong_game;
     expect_parked(SERVE, "serve after restart");
     frame();
     `CHECK(ball_x != BALL_X0, ("restart: ball did not get served"))
+
+    trace_tag = "";
 
     if (errors == 0) $display("TEST PASSED");
     else             $display("TEST FAILED: %0d error(s)", errors);

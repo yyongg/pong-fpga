@@ -34,6 +34,14 @@ module tb_tmds_encoder;
   int disparity = 0;     // running (#1s - #0s) of all symbols since blanking
   int max_disp  = 0;
 
+  // Every data symbol goes to tmds.csv for the DC-balance plot (sim/make_media.py)
+  int    trace_fd;
+  string section = "";
+  initial begin
+    trace_fd = $fopen("tmds.csv", "w");
+    $fwrite(trace_fd, "section,data,symbol,disparity\n");
+  end
+
   // Send one symbol and check what comes out one clock later
   task automatic send(input logic de_i, input logic [7:0] d, input logic [1:0] c);
     @(negedge clk);
@@ -48,6 +56,7 @@ module tb_tmds_encoder;
       if (disparity > max_disp)  max_disp = disparity;
       if (-disparity > max_disp) max_disp = -disparity;
       `CHECK(disparity >= -10 && disparity <= 10, ("DC balance drifted to %0d after data %h", disparity, d))
+      $fwrite(trace_fd, "%s,%0d,%b,%0d\n", section, d, q, disparity);
     end
   endtask
 
@@ -56,16 +65,18 @@ module tb_tmds_encoder;
     for (int c = 0; c < 4; c++) repeat (3) send(0, $urandom, c);
 
     // Every byte value, twice (different starting disparity the second time)
+    section = "all bytes";
     for (int rep = 0; rep < 2; rep++)
       for (int d = 0; d < 256; d++) send(1, d, 0);
 
     // Long runs of worst-case bytes
-    repeat (500) send(1, 8'h00, 0);
-    repeat (500) send(1, 8'hFF, 0);
-    repeat (500) send(1, 8'h55, 0);
-    repeat (500) send(1, 8'h10, 0);
+    section = "00";  repeat (500) send(1, 8'h00, 0);
+    section = "FF";  repeat (500) send(1, 8'hFF, 0);
+    section = "55";  repeat (500) send(1, 8'h55, 0);
+    section = "10";  repeat (500) send(1, 8'h10, 0);
 
     // Random data with random blanking gaps, like a real video line
+    section = "random";
     for (int i = 0; i < 20000; i++) begin
       if ($urandom_range(0, 99) == 0) repeat ($urandom_range(1, 20)) send(0, $urandom, $urandom);
       send(1, $urandom, 0);

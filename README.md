@@ -73,3 +73,48 @@ Each test prints `PASS` or `FAIL`. Logs go to `build/sim/<test>.log`.
 
 `tb_pong_game` and `tb_debounce` use shorter `SERVE_DELAY` and `CYCLES` values so the tests
 run fast.
+
+### Simulation results
+
+All six testbenches pass. The tests also write traces to `build/sim/*.csv`. To turn them into
+the images below (needs Python with numpy, matplotlib and Pillow), run:
+
+```
+python sim/make_media.py
+```
+
+**One frame from `tb_pong_renderer`.** This is the renderer's output for every pixel of a
+640x480 frame, with the score at 3:7.
+
+![Frame rendered by the RTL in simulation](media/sim_frame.png)
+
+**Gameplay from `tb_pong_game`.** This shows part of the 4000-frame rally between two computer
+players, then a point where the left player misses on purpose. The positions and scores come
+from the RTL simulation. Python draws them with the renderer's shapes, and `make_media.py`
+checks that its drawing matches the RTL frame above pixel for pixel. The serve pause is
+shortened to 3 frames in this test.
+
+![Simulated rally](media/sim_gameplay.gif)
+
+**HDMI output from `tb_pong_top`.** These are the serial pins of the whole design, with the
+real MMCM and OSERDES models, decoded back into pixels. The top strip shows line 24 with its
+blanking intervals, the score digits and the net. The zoom shows the 10-bit TMDS symbols on
+each lane where the left score digit starts at x = 256.
+
+![TMDS serial bits decoded from the HDMI pins](media/wave_hdmi_tmds.png)
+
+**640x480 timing from `tb_video_sync`.** One line and one frame. `frame_tick` fires at the
+start of vertical blanking, which is when the game state updates.
+
+![Video timing](media/wave_video_timing.png)
+
+**DC balance from `tb_tmds_encoder`.** If the bytes were sent as they are, the count of 1s
+and 0s on the line would drift without limit. The TMDS encoder keeps it within ±8.
+
+![TMDS DC balance](media/tmds_dc_balance.png)
+
+**Button debouncing from `tb_debounce`.** Contact bounce and a short dropout do not change
+the output. A stable press or release appears after 16 stable cycles plus 2 synchronizer
+cycles. The real design uses 250,000 cycles, which is 10 ms.
+
+![Debounce waveform](media/wave_debounce.png)

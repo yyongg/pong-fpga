@@ -11,7 +11,8 @@
 // Needs the UNISIM library and glbl (sim/run_sim.tcl handles that).
 module tb_pong_top;
 
-  localparam int LINES = 48;     // visible lines checked (1..LINES)
+  localparam int LINES      = 48;  // visible lines checked (1..LINES)
+  localparam int TRACE_LINE = 24;  // line saved to hdmi_line.csv (top row of the score digits)
 
   logic       sysclk = 0;
   logic [3:0] btn    = '0;
@@ -60,8 +61,9 @@ module tb_pong_top;
 
   // ---------------- Serial receiver -----------------------------------------
   // One bit per clk_5x edge (DDR). Sample mid-bit, shift in LSB first.
-  logic [9:0] sr   [3] = '{default: '0};
-  logic [9:0] word [3];
+  // Lanes 0-2 = blue, green, red; lane 3 = the clock lane.
+  logic [9:0] sr   [4] = '{default: '0};
+  logic [9:0] word [4];
   int         nbits = 0, phase = -1;
   int         run [10] = '{default: 0};
   event       word_ev;
@@ -72,6 +74,7 @@ module tb_pong_top;
       sr[i] = {hdmi_tx_d_p[i], sr[i][9:1]};
       `CHECK(hdmi_tx_d_n[i] === ~hdmi_tx_d_p[i], ("lane %0d: d_n is not the inverse of d_p", i))
     end
+    sr[3] = {hdmi_tx_clk_p, sr[3][9:1]};
     nbits++;
     if (phase < 0) begin                // word boundary = 8 control tokens in a row
       automatic int p = nbits % 10;
@@ -91,6 +94,9 @@ module tb_pong_top;
     static int    len = 0, xpos = 0, ln = 0, bad_px = 0;
     static bit    started = 0;                 // seen the start of an hsync pulse
     static kind_t before_idle = NONE;
+    static int    trace_fd;
+    trace_fd = $fopen("hdmi_line.csv", "w");     // line TRACE_LINE, for sim/make_media.py
+    $fwrite(trace_fd, "kind,x,blue,green,red,clock,rgb\n");
 
     forever begin
       @(word_ev);
@@ -125,6 +131,9 @@ module tb_pong_top;
       end
       len++;
 
+      // The clock lane must be word-aligned with the data lanes
+      if (started) `CHECK(word[3] == 10'b00000_11111, ("clock lane word %b is not aligned", word[3]))
+
       if (kind == DATA && started) begin
         automatic logic [23:0] px = {tmds_decode(word[2]), tmds_decode(word[1]), tmds_decode(word[0])};
         automatic logic [23:0] want = expected_px(xpos, ln);
@@ -132,9 +141,14 @@ module tb_pong_top;
           bad_px++;
           `CHECK(0, ("pixel (%0d,%0d) decoded as %h, expected %h", xpos, ln, px, want))
         end
-        xpos++;
       end
+      if (ln == TRACE_LINE)
+        $fwrite(trace_fd, "%s,%0d,%b,%b,%b,%b,%h\n", kind.name(), (kind == DATA) ? xpos : -1,
+                word[0], word[1], word[2], word[3],
+                {tmds_decode(word[2]), tmds_decode(word[1]), tmds_decode(word[0])});
+      if (kind == DATA && started) xpos++;
     end
+    $fclose(trace_fd);
 
     `CHECK(started, ("never saw an hsync pulse"))
     $display("checked lines 1..%0d: %0d wrong pixels", LINES, bad_px);

@@ -3,6 +3,10 @@
 This is a two-player Pong game in SystemVerilog. It outputs 640x480 @ 60 Hz video on the
 board's HDMI OUT port.
 
+## Demo Video
+
+https://www.youtube.com/watch?v=p-BpYY052CU
+
 ```
              sysclk 125 MHz ──► MMCM ──► clk_pix 25.2 MHz / clk_5x 126 MHz
                                     │
@@ -44,3 +48,26 @@ vivado -mode batch -source build.tcl
 
 To load the bitstream, set the JP1 jumper to JTAG. Then open Vivado Hardware Manager and
 program `build/pong_top.bit`.
+
+## Simulation
+
+Self-checking testbenches for the Vivado simulator (xsim) are in `sim/`:
+
+```
+vivado -mode batch -source sim/run_sim.tcl                        # all tests
+vivado -mode batch -source sim/run_sim.tcl -tclargs tb_pong_game  # one test
+```
+
+Each test prints `PASS` or `FAIL`. Logs go to `build/sim/<test>.log`.
+
+| Testbench | What it checks |
+|-----------|----------------|
+| `tb_video_sync`    | Every pixel of two frames: x/y, `de`, sync pulse positions and widths, `frame_tick` |
+| `tb_debounce`      | Bouncing and short glitches are ignored; a stable press shows up after `CYCLES` clocks |
+| `tb_tmds_encoder`  | Control tokens; every data symbol decodes back to its byte; DC balance stays within ±10 |
+| `tb_pong_game`     | Paddle movement and limits, serve pause, scoring, game over and restart; a 4000-frame rally between two computer players that checks every paddle bounce and angle |
+| `tb_pong_renderer` | Edges of the ball, paddles and net, every score digit, the 1-clock pipeline. Also writes `build/sim/frame.ppm`, a picture of one frame |
+| `tb_pong_top`      | The whole design with the real MMCM and OSERDES models. The bench works as an HDMI receiver: it decodes the serial TMDS pins and checks the line timing and the pixels of the first 48 lines |
+
+`tb_pong_game` and `tb_debounce` use shorter `SERVE_DELAY` and `CYCLES` values so the tests
+run fast.

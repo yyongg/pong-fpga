@@ -1,0 +1,38 @@
+# Build output (bitstream, checkpoints, reports, logs)
+build/
+
+# Vivado scratch files
+.Xil/
+*.jou
+*.log
+*.str
+*.pb
+*.wdb
+*.dcp
+*.bit
+*.ltx
+clockInfo.txt
+vivado_featurestore.json
+usage_statistics_webtalk.*
+webtalk*/
+hs_err_pid*
+
+# Vivado project-mode directories (if the GUI is used)
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.gen/
+*.xpr
+
+# Simulator (xsim) output
+xsim.dir/
+*.vcd
+*.ppm
+
+# Editor / OS
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

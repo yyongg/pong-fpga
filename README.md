@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Pong on the PYNQ-Z2
 
 This is a two-player Pong game in SystemVerilog. It outputs 640x480 @ 60 Hz video on the
@@ -45,7 +44,3 @@ vivado -mode batch -source build.tcl
 
 To load the bitstream, set the JP1 jumper to JTAG. Then open Vivado Hardware Manager and
 program `build/pong_top.bit`.
-=======
-# pong-fpga
-Implementing Pong purely in hardware
->>>>>>> 516c294f8ea5df66ff59c59d8aa035f64d184563

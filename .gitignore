@@ -25,6 +25,7 @@ hs_err_pid*
 *.sim/
 *.gen/
 *.xpr
+project_1/
 
 # Simulator (xsim) output
 xsim.dir/

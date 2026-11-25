@@ -7,6 +7,8 @@ board's HDMI OUT port.
 
 https://www.youtube.com/watch?v=p-BpYY052CU
 
+## System Architecture
+
 ```
              sysclk 125 MHz ──► MMCM ──► clk_pix 25.2 MHz / clk_5x 126 MHz
                                     │
